@@ -25,6 +25,7 @@ libz-rs = ["dep:libz-rs-sys"]
 intl = ["dep:icu_capi"]
 crown = []
 oom_with_hook = []
+custom-allocator = []
 
 [dependencies]
 libc.workspace = true

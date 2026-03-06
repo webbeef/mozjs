@@ -16,6 +16,7 @@
 #include "mozilla/DebugOnly.h"
 #include "mozilla/fallible.h"
 #include "mozilla/UniquePtr.h"
+#include "mozjs_sys_alloc.h"
 
 #ifdef XP_WIN
 #  include <cstdint>
@@ -90,7 +91,7 @@ namespace detail {
 
 template <typename T>
 struct FreePolicy {
-  void operator()(const void* ptr) { free(const_cast<void*>(ptr)); }
+  void operator()(const void* ptr) { mozjs_sys_free(const_cast<void*>(ptr)); }
 };
 
 #if !defined(RUST_BINDGEN)

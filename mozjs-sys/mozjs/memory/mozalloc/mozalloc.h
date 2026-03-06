@@ -55,11 +55,11 @@ MOZ_BEGIN_EXTERN_C
  * ours.
  */
 #ifndef free_impl
-#  define free_impl free
+#  define free_impl mozjs_sys_free
 #  define free_impl_
 #endif
 #ifndef malloc_impl
-#  define malloc_impl malloc
+#  define malloc_impl mozjs_sys_malloc
 #  define malloc_impl_
 #endif
 

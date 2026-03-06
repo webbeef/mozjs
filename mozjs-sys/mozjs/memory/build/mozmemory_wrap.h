@@ -132,7 +132,7 @@
 #endif
 
 #ifndef mozmem_malloc_impl
-#  define mozmem_malloc_impl(a) a
+#  define mozmem_malloc_impl(a) mozjs_sys_##a
 #endif
 #ifndef mozmem_dup_impl
 #  define mozmem_dup_impl(a) a

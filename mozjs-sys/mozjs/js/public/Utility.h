@@ -21,6 +21,7 @@
 
 #include "jstypes.h"
 #include "mozmemory.h"
+#include "mozjs_sys_alloc.h"
 #include "js/TypeDecls.h"
 
 /* The public JS engine namespace. */
@@ -431,7 +432,7 @@ static inline void js_free(void* p) {
   // currently can't enforce that all memory freed here was allocated by
   // js_malloc(). All other memory should go through a different allocator and
   // deallocator.
-  free(p);
+  mozjs_sys_free(p);
 }
 #endif /* JS_USE_CUSTOM_ALLOCATOR */
 

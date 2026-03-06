@@ -16,6 +16,7 @@
 #include "mozilla/Maybe.h"
 #include "mozilla/RefCounted.h"
 #include "mozmemory.h"
+#include "mozjs_sys_alloc.h"
 
 namespace mozilla {
 
@@ -61,7 +62,7 @@ class StringBuffer {
                "mStorageSize will truncate");
 
     size_t bytes = sizeof(StringBuffer) + aSize;
-    void* hdr = aArena ? moz_arena_malloc(*aArena, bytes) : malloc(bytes);
+    void* hdr = aArena ? moz_arena_malloc(*aArena, bytes) : mozjs_sys_malloc(bytes);
     if (!hdr) {
       return nullptr;
     }
@@ -152,7 +153,7 @@ class StringBuffer {
 
     size_t bytes = sizeof(StringBuffer) + aSize;
     aHdr = aArena ? (StringBuffer*)moz_arena_realloc(*aArena, aHdr, bytes)
-                  : (StringBuffer*)realloc(aHdr, bytes);
+                  : (StringBuffer*)mozjs_sys_realloc(aHdr, bytes);
     if (aHdr) {
       detail::RefCountLogger::logAddRef(aHdr, 1);
       aHdr->mStorageSize = aSize;
@@ -187,7 +188,7 @@ class StringBuffer {
       // on other threads, that is, to ensure that writes prior to that release
       // are now visible on this thread.
       count = mRefCount.load(std::memory_order_acquire);
-      free(this);  // We were allocated with malloc.
+      mozjs_sys_free(this);  // We were allocated with mozjs_sys_malloc.
     }
   }
 

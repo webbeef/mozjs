@@ -69,3 +69,72 @@ mod oom_hook {
         set_alloc_error_hook(hook);
     }
 }
+
+/// Default allocator bridge: routes SpiderMonkey C++ allocations to libc.
+///
+/// Enable the `custom-allocator` feature to suppress these defaults.
+/// When that feature is active, the consumer crate must provide
+/// `#[no_mangle] pub unsafe extern "C"` definitions for:
+///   - `mozjs_sys_malloc`
+///   - `mozjs_sys_calloc`
+///   - `mozjs_sys_realloc`
+///   - `mozjs_sys_free`
+///   - `mozjs_sys_memalign`
+///   - `mozjs_sys_malloc_usable_size`
+#[cfg(not(feature = "custom-allocator"))]
+mod alloc_bridge {
+    use std::os::raw::c_void;
+
+    #[no_mangle]
+    pub unsafe extern "C" fn mozjs_sys_malloc(size: usize) -> *mut c_void {
+        libc::malloc(size)
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn mozjs_sys_calloc(n: usize, size: usize) -> *mut c_void {
+        libc::calloc(n, size)
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn mozjs_sys_realloc(p: *mut c_void, size: usize) -> *mut c_void {
+        libc::realloc(p, size)
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn mozjs_sys_free(p: *mut c_void) {
+        libc::free(p)
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn mozjs_sys_memalign(align: usize, size: usize) -> *mut c_void {
+        #[cfg(target_os = "windows")]
+        {
+            libc::_aligned_malloc(size, align)
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let mut ptr: *mut c_void = std::ptr::null_mut();
+            if libc::posix_memalign(&mut ptr, align, size) == 0 {
+                ptr
+            } else {
+                std::ptr::null_mut()
+            }
+        }
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn mozjs_sys_malloc_usable_size(p: *const c_void) -> usize {
+        #[cfg(target_vendor = "apple")]
+        {
+            libc::malloc_size(p)
+        }
+        #[cfg(target_os = "windows")]
+        {
+            libc::_msize(p as *mut c_void)
+        }
+        #[cfg(not(any(target_vendor = "apple", target_os = "windows")))]
+        {
+            libc::malloc_usable_size(p as *mut c_void)
+        }
+    }
+}

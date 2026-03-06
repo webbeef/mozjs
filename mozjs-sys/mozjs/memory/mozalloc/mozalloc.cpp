@@ -12,22 +12,46 @@
 #endif               // if defined(MALLOC_H)
 
 #if !defined(MOZ_MEMORY)
-// When jemalloc is disabled, or when building the static runtime variant,
-// we need not to use the suffixes.
+// When jemalloc is disabled, route through the mozjs_sys bridge allocator
+// symbols provided by the Rust consumer (or the default libc implementation).
 
-#  include <stdlib.h>  // for malloc, free
+#  include <stdlib.h>
+#  include <string.h>
 #  if defined(XP_UNIX)
 #    include <unistd.h>
 #  endif  // if defined(XP_UNIX)
 
-#  define malloc_impl malloc
-#  define calloc_impl calloc
-#  define realloc_impl realloc
-#  define free_impl free
-#  define memalign_impl memalign
-#  define malloc_usable_size_impl malloc_usable_size
-#  define strdup_impl strdup
-#  define strndup_impl strndup
+#  include "mozjs_sys_alloc.h"
+
+#  define malloc_impl mozjs_sys_malloc
+#  define calloc_impl mozjs_sys_calloc
+#  define realloc_impl mozjs_sys_realloc
+#  define free_impl mozjs_sys_free
+#  define memalign_impl mozjs_sys_memalign
+#  define malloc_usable_size_impl mozjs_sys_malloc_usable_size
+
+// strdup/strndup internally call system malloc. We provide versions
+// that allocate through the bridge to keep alloc/free consistent.
+static inline char* mozjs_sys_strdup_impl(const char* s) {
+  if (!s) return nullptr;
+  size_t len = strlen(s) + 1;
+  char* d = static_cast<char*>(mozjs_sys_malloc(len));
+  if (d) memcpy(d, s, len);
+  return d;
+}
+static inline char* mozjs_sys_strndup_impl(const char* s, size_t n) {
+  if (!s) return nullptr;
+  size_t len = strnlen(s, n);
+  char* d = static_cast<char*>(mozjs_sys_malloc(len + 1));
+  if (d) {
+    memcpy(d, s, len);
+    d[len] = '\0';
+  }
+  return d;
+}
+
+#  define strdup_impl mozjs_sys_strdup_impl
+#  define strndup_impl mozjs_sys_strndup_impl
 
 #endif
 
@@ -124,14 +148,18 @@ void* moz_xmemalign(size_t boundary, size_t size) {
 size_t moz_malloc_usable_size(void* ptr) {
   if (!ptr) return 0;
 
-#if defined(XP_DARWIN)
+#if defined(MOZ_MEMORY)
+#  if defined(XP_DARWIN)
   return malloc_size(ptr);
-#elif defined(HAVE_MALLOC_USABLE_SIZE) || defined(MOZ_MEMORY)
+#  elif defined(HAVE_MALLOC_USABLE_SIZE) || defined(MOZ_MEMORY)
   return malloc_usable_size_impl(ptr);
-#elif defined(XP_WIN)
+#  elif defined(XP_WIN)
   return _msize(ptr);
-#else
+#  else
   return 0;
+#  endif
+#else
+  return mozjs_sys_malloc_usable_size(ptr);
 #endif
 }
 

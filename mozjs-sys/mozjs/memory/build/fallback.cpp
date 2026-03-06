@@ -6,26 +6,19 @@
 
 #include "mozmemory.h"
 #include "mozjemalloc.h"
+#include "mozjs_sys_alloc.h"
 #include <stdlib.h>
 
 #ifndef HAVE_MEMALIGN
 MOZ_MEMORY_API void* memalign(size_t aAlignment, size_t aSize) {
-#  ifdef XP_WIN
-  return _aligned_malloc(aSize, aAlignment);
-#  else
-  void* ret;
-  if (posix_memalign(&ret, aAlignment, aSize) != 0) {
-    return nullptr;
-  }
-  return ret;
-#  endif
+  return mozjs_sys_memalign(aAlignment, aSize);
 }
 #endif
 
 struct SystemMalloc {
 #define MALLOC_DECL(name, return_type, ...)                                \
   static inline return_type name(ARGS_HELPER(TYPED_ARGS, ##__VA_ARGS__)) { \
-    return ::name(ARGS_HELPER(ARGS, ##__VA_ARGS__));                       \
+    return mozjs_sys_##name(ARGS_HELPER(ARGS, ##__VA_ARGS__));             \
   }
 #define MALLOC_FUNCS MALLOC_FUNCS_MALLOC_BASE
 #include "malloc_decls.h"

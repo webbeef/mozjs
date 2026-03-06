@@ -946,19 +946,10 @@ void DeleteRootedObjectVector(JS::PersistentRootedObjectVector* v) { delete v; }
 #  error "unsupported platform"
 #endif
 
-// SpiderMonkey-in-Rust currently uses system malloc, not jemalloc.
+extern "C" size_t mozjs_sys_malloc_usable_size(const void* ptr);
+
 static size_t MallocSizeOf(const void* aPtr) {
-#if defined(__linux__) || defined(__wasi__) || defined(__FreeBSD__)
-  return malloc_usable_size((void*)aPtr);
-#elif defined(__APPLE__)
-  return malloc_size((void*)aPtr);
-#elif defined(__MINGW32__) || defined(__MINGW64__)
-  return _msize((void*)aPtr);
-#elif defined(_MSC_VER)
-  return _msize((void*)aPtr);
-#else
-#  error "unsupported platform"
-#endif
+  return mozjs_sys_malloc_usable_size(aPtr);
 }
 
 bool CollectServoSizes(JSContext* cx, JS::ServoSizes* sizes, GetSize gs) {

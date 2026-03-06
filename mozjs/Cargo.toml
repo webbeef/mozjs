@@ -20,6 +20,7 @@ libz-sys = ["mozjs_sys/libz-sys"]
 libz-rs = ["mozjs_sys/libz-rs"]
 intl = ["mozjs_sys/intl"]
 crown = ["mozjs_sys/crown"]
+custom-allocator = ["mozjs_sys/custom-allocator"]
 
 
 [dependencies]
